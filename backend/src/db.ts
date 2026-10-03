@@ -157,6 +157,20 @@ export async function initDb() {
     }
   }
 
+  // Seed sample customers if empty (vital for Vercel ephemeral DBs to not look broken)
+  const customerCount = await dbWrapper.get('SELECT COUNT(*) as count FROM customers');
+  if (Number(customerCount.count) === 0) {
+    const hashedCustPw = await bcrypt.hash('password123', 10);
+    const demoCustId = (await dbWrapper.run(
+      'INSERT INTO customers (name, email, password, createdAt) VALUES (?, ?, ?, ?)',
+      ['Demo User', 'demo@example.com', hashedCustPw, new Date().toISOString()]
+    )).lastID;
+    
+    // Seed sample wishlist & cart for this user
+    await dbWrapper.run('INSERT INTO wishlist_items (customerId, productId, createdAt) VALUES (?, ?, ?)', [demoCustId, '1', new Date().toISOString()]);
+    await dbWrapper.run('INSERT INTO cart_items (customerId, productId, quantity) VALUES (?, ?, ?)', [demoCustId, '2', 1]);
+  }
+
   // Seed sample orders if empty
   const orderCount = await dbWrapper.get('SELECT COUNT(*) as count FROM orders');
   if (Number(orderCount.count) === 0) {
