@@ -12,7 +12,7 @@ export function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/admin/stats', {
+    fetch('/api/admin/stats', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }
     })
       .then(res => res.json())

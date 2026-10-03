@@ -8,14 +8,14 @@ export function AdminProducts() {
   const [isAdding, setIsAdding] = useState(false);
 
   const fetchProducts = () => {
-    fetch('http://localhost:5000/api/products')
+    fetch('/api/products')
       .then(res => res.json())
       .then(setProducts)
       .catch(console.error);
   };
 
   const fetchCategories = () => {
-    fetch('http://localhost:5000/api/categories')
+    fetch('/api/categories')
       .then(res => res.json())
       .then(setCategories)
       .catch(console.error);
@@ -28,7 +28,7 @@ export function AdminProducts() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure?')) return;
-    await fetch(`http://localhost:5000/api/products/${id}`, {
+    await fetch(`/api/products/${id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }
     });
@@ -46,7 +46,7 @@ export function AdminProducts() {
       const formData = new FormData();
       formData.append('image', selectedFile);
       
-      const uploadRes = await fetch('http://localhost:5000/api/upload', {
+      const uploadRes = await fetch('/api/upload', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` },
         body: formData
@@ -58,8 +58,8 @@ export function AdminProducts() {
     }
 
     const url = editingProduct.id 
-      ? `http://localhost:5000/api/products/${editingProduct.id}`
-      : 'http://localhost:5000/api/products';
+      ? `/api/products/${editingProduct.id}`
+      : '/api/products';
     const method = editingProduct.id ? 'PUT' : 'POST';
 
     await fetch(url, {

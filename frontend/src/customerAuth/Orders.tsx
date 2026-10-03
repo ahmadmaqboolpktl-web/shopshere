@@ -27,7 +27,7 @@ export function CheckoutPage({ cartItems, customer, fetchCart }: { cartItems: an
 
     try {
       const token = localStorage.getItem('customer_token');
-      const res = await fetch('http://localhost:5000/api/orders/checkout', {
+      const res = await fetch('/api/orders/checkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -134,7 +134,7 @@ export function OrderConfirmationPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('customer_token');
-    fetch(`http://localhost:5000/api/orders/my-orders/${id}`, {
+    fetch(`/api/orders/my-orders/${id}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
@@ -212,7 +212,7 @@ export function MyOrdersPage() {
 
   useEffect(() => {
     const token = localStorage.getItem('customer_token');
-    fetch('http://localhost:5000/api/orders/my-orders', {
+    fetch('/api/orders/my-orders', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())

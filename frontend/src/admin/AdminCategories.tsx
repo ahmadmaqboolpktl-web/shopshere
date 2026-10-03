@@ -11,7 +11,7 @@ export function AdminCategories() {
   const [parentId, setParentId] = useState<string>('');
 
   const fetchCategories = () => {
-    fetch('http://localhost:5000/api/admin/categories', {
+    fetch('/api/admin/categories', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }
     })
       .then(res => res.json())
@@ -35,7 +35,7 @@ export function AdminCategories() {
     const token = localStorage.getItem('admin_token');
     
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/categories${isEditing ? `/${currentId}` : ''}`, {
+      const res = await fetch(`/api/admin/categories${isEditing ? `/${currentId}` : ''}`, {
         method: isEditing ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,7 +63,7 @@ export function AdminCategories() {
     const token = localStorage.getItem('admin_token');
     
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/categories/${id}`, {
+      const res = await fetch(`/api/admin/categories/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

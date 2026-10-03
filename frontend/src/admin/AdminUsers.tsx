@@ -6,7 +6,7 @@ export function AdminUsers() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/admin/customers', {
+    fetch('/api/admin/customers', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }
     })
       .then(res => {

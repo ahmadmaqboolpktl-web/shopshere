@@ -5,8 +5,16 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { initDb, getDb } from './db';
 import multer from 'multer';
+import fs from 'fs';
+import path from 'path';
+
+const uploadDir = process.env.VERCEL ? '/tmp/uploads/' : 'uploads/';
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 const upload = multer({ 
-  dest: 'uploads/',
+  dest: uploadDir,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
@@ -30,10 +38,10 @@ if (!JWT_SECRET) {
 }
 
 app.use(cors({
-  origin: 'http://localhost:5173'
+  origin: process.env.VERCEL ? true : 'http://localhost:5173'
 }));
 app.use(express.json());
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(uploadDir));
 
 // Initialize DB
 initDb().then(() => console.log('Database initialized'));
@@ -592,6 +600,10 @@ app.delete('/api/admin/categories/:id', requireAuth, async (req: Request, res: R
   res.json({ message: 'Category deleted' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
+
+export default app;

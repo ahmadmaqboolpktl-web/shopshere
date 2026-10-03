@@ -28,12 +28,12 @@ function Home({ customer }: { customer?: any }) {
   const [sortBy, setSortBy] = useState('newest');
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/categories')
+    fetch('/api/categories')
       .then(res => res.json())
       .then(data => setCategories([{ id: 'all', name: 'All', parentId: null }, ...data]))
       .catch(console.error);
 
-    fetch('http://localhost:5000/api/products')
+    fetch('/api/products')
       .then(res => res.json())
       .then(data => {
         setProducts(data);
@@ -328,7 +328,7 @@ function ProductDetails({ customer }: { customer?: any }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/products/${id}`)
+    fetch(`/api/products/${id}`)
       .then(res => {
         if (!res.ok) throw new Error('Not found');
         return res.json();
@@ -401,7 +401,7 @@ function ProductDetails({ customer }: { customer?: any }) {
                     navigate('/login');
                     return;
                   }
-                  await fetch('http://localhost:5000/api/cart', {
+                  await fetch('/api/cart', {
                     method: 'POST',
                     headers: { 
                       'Content-Type': 'application/json',
@@ -453,7 +453,7 @@ function App() {
       setCartItems([]);
       return;
     }
-    fetch('http://localhost:5000/api/cart', {
+    fetch('/api/cart', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.ok ? res.json() : [])
@@ -464,7 +464,7 @@ function App() {
   useEffect(() => {
     const token = localStorage.getItem('customer_token');
     if (token) {
-      fetch('http://localhost:5000/api/auth/me', {
+      fetch('/api/auth/me', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       .then(res => res.ok ? res.json() : null)
@@ -486,7 +486,7 @@ function App() {
     localStorage.removeItem('customer_token');
     setCustomer(null);
     setCartItems([]);
-    await fetch('http://localhost:5000/api/auth/logout', { method: 'POST' }).catch(() => {});
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
   };
 
   const cartTotalItems = cartItems.reduce((acc, item) => acc + item.quantity, 0);

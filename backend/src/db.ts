@@ -1,18 +1,56 @@
-import sqlite3 from 'sqlite3';
-import { open, Database } from 'sqlite';
+import { createClient, Client } from '@libsql/client';
 import { sampleProducts } from './data';
 import bcrypt from 'bcrypt';
+import fs from 'fs';
+import path from 'path';
 
-let db: Database | null = null;
+let client: Client | null = null;
+
+export const dbWrapper = {
+  all: async (sql: string, params: any[] = []) => {
+    const rs = await client!.execute({ sql, args: params });
+    return rs.rows as any[];
+  },
+  get: async (sql: string, params: any[] = []) => {
+    const rs = await client!.execute({ sql, args: params });
+    return rs.rows[0] as any | undefined;
+  },
+  run: async (sql: string, params: any[] = []) => {
+    const rs = await client!.execute({ sql, args: params });
+    return { lastID: Number(rs.lastInsertRowid), changes: rs.rowsAffected };
+  },
+  exec: async (sql: string) => {
+    await client!.executeMultiple(sql);
+  }
+};
 
 export async function initDb() {
-  db = await open({
-    filename: './database.sqlite',
-    driver: sqlite3.Database
-  });
+  let dbUrl = process.env.TURSO_DATABASE_URL;
+  let authToken = process.env.TURSO_AUTH_TOKEN;
+
+  if (!dbUrl) {
+    let localPath = 'database.sqlite';
+    if (process.env.VERCEL) {
+      localPath = '/tmp/database.sqlite';
+      if (!fs.existsSync(localPath)) {
+        const sourceDb = path.join(process.cwd(), 'database.sqlite');
+        if (fs.existsSync(sourceDb)) {
+          fs.copyFileSync(sourceDb, localPath);
+        }
+      }
+    }
+    dbUrl = `file:${localPath}`;
+  }
+
+  const config: any = { url: dbUrl };
+  if (authToken) {
+    config.authToken = authToken;
+  }
+  
+  client = createClient(config);
 
   // Create tables
-  await db.exec(`
+  await dbWrapper.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE,
@@ -86,33 +124,33 @@ export async function initDb() {
     );
   `);
 
-  const cols = await db.all('PRAGMA table_info(categories)');
+  const cols = await dbWrapper.all('PRAGMA table_info(categories)');
   if (!cols.find(c => c.name === 'parentId')) {
-    await db.run('ALTER TABLE categories ADD COLUMN parentId INTEGER REFERENCES categories(id)');
+    await dbWrapper.run('ALTER TABLE categories ADD COLUMN parentId INTEGER REFERENCES categories(id)');
   }
 
   // Seed admin user
-  const adminExists = await db.get('SELECT * FROM users WHERE username = ?', ['admin']);
+  const adminExists = await dbWrapper.get('SELECT * FROM users WHERE username = ?', ['admin']);
   if (!adminExists) {
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
     const hashedPassword = await bcrypt.hash(adminPassword, 10);
-    await db.run('INSERT INTO users (username, password) VALUES (?, ?)', ['admin', hashedPassword]);
+    await dbWrapper.run('INSERT INTO users (username, password) VALUES (?, ?)', ['admin', hashedPassword]);
   }
 
   // Seed categories if empty
-  const categoryCount = await db.get('SELECT COUNT(*) as count FROM categories');
-  if (categoryCount.count === 0) {
+  const categoryCount = await dbWrapper.get('SELECT COUNT(*) as count FROM categories');
+  if (Number(categoryCount.count) === 0) {
     const initialCategories = ['Smartphones', 'Laptops', 'Tablets', 'Gaming', 'Accessories', 'Fashion', 'Books'];
     for (const cat of initialCategories) {
-      await db.run('INSERT INTO categories (name) VALUES (?)', [cat]);
+      await dbWrapper.run('INSERT INTO categories (name) VALUES (?)', [cat]);
     }
   }
 
   // Seed products if empty
-  const productCount = await db.get('SELECT COUNT(*) as count FROM products');
-  if (productCount.count === 0) {
+  const productCount = await dbWrapper.get('SELECT COUNT(*) as count FROM products');
+  if (Number(productCount.count) === 0) {
     for (const p of sampleProducts) {
-      await db.run(
+      await dbWrapper.run(
         'INSERT INTO products (id, name, description, price, category, image, stock, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         [p.id, p.name, p.description, p.price, p.category, p.image, p.stock, p.createdAt]
       );
@@ -120,22 +158,22 @@ export async function initDb() {
   }
 
   // Seed sample orders if empty
-  const orderCount = await db.get('SELECT COUNT(*) as count FROM orders');
-  if (orderCount.count === 0) {
-    const result = await db.run(
+  const orderCount = await dbWrapper.get('SELECT COUNT(*) as count FROM orders');
+  if (Number(orderCount.count) === 0) {
+    const result = await dbWrapper.run(
       'INSERT INTO orders (customerName, customerEmail, address, phone, totalAmount, status, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
       ['John Doe', 'john@example.com', '123 Test St', '555-0100', 999.00, 'Pending', new Date().toISOString()]
     );
-    await db.run(
+    await dbWrapper.run(
       'INSERT INTO order_items (orderId, productId, quantity, price) VALUES (?, ?, ?, ?)',
       [result.lastID, '1', 1, 999.00]
     );
   }
 
-  return db;
+  return dbWrapper;
 }
 
 export function getDb() {
-  if (!db) throw new Error('Database not initialized');
-  return db;
+  if (!client) throw new Error('Database not initialized');
+  return dbWrapper;
 }

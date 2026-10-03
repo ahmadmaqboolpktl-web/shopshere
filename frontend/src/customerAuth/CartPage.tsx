@@ -13,7 +13,7 @@ export function CartPage({ cartItems, fetchCart, customer }: { cartItems: any[],
   }
 
   const handleUpdateQuantity = async (cartItemId: number, quantity: number) => {
-    await fetch(`http://localhost:5000/api/cart/${cartItemId}`, {
+    await fetch(`/api/cart/${cartItemId}`, {
       method: 'PUT',
       headers: { 
         'Content-Type': 'application/json',
@@ -25,7 +25,7 @@ export function CartPage({ cartItems, fetchCart, customer }: { cartItems: any[],
   };
 
   const handleRemove = async (cartItemId: number) => {
-    await fetch(`http://localhost:5000/api/cart/${cartItemId}`, {
+    await fetch(`/api/cart/${cartItemId}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${localStorage.getItem('customer_token')}` }
     });

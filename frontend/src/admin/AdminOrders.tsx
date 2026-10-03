@@ -4,7 +4,7 @@ export function AdminOrders() {
   const [orders, setOrders] = useState<any[]>([]);
 
   const fetchOrders = () => {
-    fetch('http://localhost:5000/api/orders', {
+    fetch('/api/orders', {
       headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }
     })
       .then(res => res.json())
@@ -17,7 +17,7 @@ export function AdminOrders() {
   }, []);
 
   const handleStatusChange = async (id: number, status: string) => {
-    await fetch(`http://localhost:5000/api/orders/${id}/status`, {
+    await fetch(`/api/orders/${id}/status`, {
       method: 'PUT',
       headers: { 
         'Content-Type': 'application/json',
@@ -72,7 +72,7 @@ export function AdminOrders() {
                 <td className="p-4">
                   <button 
                     onClick={() => {
-                      fetch(`http://localhost:5000/api/orders/${order.id}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }})
+                      fetch(`/api/orders/${order.id}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('admin_token')}` }})
                         .then(res => res.json())
                         .then(setSelectedOrder)
                         .catch(console.error);

@@ -10,7 +10,7 @@ export function WishlistPage({ customer }: { customer: any }) {
     const token = localStorage.getItem('customer_token');
     if (!token) return;
     
-    fetch('http://localhost:5000/api/wishlist', {
+    fetch('/api/wishlist', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -40,7 +40,7 @@ export function WishlistPage({ customer }: { customer: any }) {
 
   const handleRemove = async (productId: string) => {
     const token = localStorage.getItem('customer_token');
-    await fetch(`http://localhost:5000/api/wishlist/${productId}`, {
+    await fetch(`/api/wishlist/${productId}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -51,7 +51,7 @@ export function WishlistPage({ customer }: { customer: any }) {
 
   const handleAddToCart = async (productId: string) => {
     const token = localStorage.getItem('customer_token');
-    await fetch('http://localhost:5000/api/cart', {
+    await fetch('/api/cart', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -122,7 +122,7 @@ export function WishlistHeart({ productId, customer }: { productId: string, cust
   const checkWishlist = () => {
     if (!customer) return;
     const token = localStorage.getItem('customer_token');
-    fetch('http://localhost:5000/api/wishlist', { headers: { 'Authorization': `Bearer ${token}` } })
+    fetch('/api/wishlist', { headers: { 'Authorization': `Bearer ${token}` } })
       .then(res => res.json())
       .then(data => {
         setIsInWishlist(data.some((item: any) => item.id === productId));
@@ -148,12 +148,12 @@ export function WishlistHeart({ productId, customer }: { productId: string, cust
 
     const token = localStorage.getItem('customer_token');
     if (isInWishlist) {
-      await fetch(`http://localhost:5000/api/wishlist/${productId}`, {
+      await fetch(`/api/wishlist/${productId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
     } else {
-      await fetch('http://localhost:5000/api/wishlist', {
+      await fetch('/api/wishlist', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
