@@ -90,6 +90,58 @@ function Home({ customer }: { customer?: any }) {
     }
   }
 
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiRecommendations, setAiRecommendations] = useState<{product: Product, reason: string}[]>([]);
+  const [hasAiSearched, setHasAiSearched] = useState(false);
+
+  const handleAiSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiQuery.trim()) return;
+
+    const query = aiQuery.toLowerCase();
+    
+    let maxPrice = Infinity;
+    const priceMatch = query.match(/(?:under|below|<|budget|max|cheaper than)\s*\$?(\d+(?:,\d{3})*(?:\.\d+)?)/);
+    if (priceMatch) {
+      maxPrice = parseFloat(priceMatch[1].replace(/,/g, ''));
+    }
+
+    const stopWords = ['i', 'need', 'a', 'for', 'the', 'show', 'me', 'something', 'with', 'under', 'below', 'budget', 'max', 'of', 'in', 'and', 'to', 'buy'];
+    const words = query.replace(/[^a-z0-9\s]/g, '').split(/\s+/);
+    const keywords = words.filter(w => !stopWords.includes(w) && w.length > 2 && isNaN(Number(w)));
+
+    const scored = products
+      .filter(p => p.stock > 0)
+      .filter(p => p.price <= maxPrice)
+      .map(p => {
+        let score = 0;
+        let matches: string[] = [];
+
+        keywords.forEach(kw => {
+          if (p.name.toLowerCase().includes(kw)) { score += 3; matches.push(kw); }
+          else if (p.category.toLowerCase().includes(kw)) { score += 2; matches.push(kw); }
+          else if (p.description.toLowerCase().includes(kw)) { score += 1; matches.push(kw); }
+        });
+
+        let reason = "";
+        if (matches.length > 0 && maxPrice !== Infinity) {
+          reason = `Matches "${matches[0]}" and fits your budget.`;
+        } else if (matches.length > 0) {
+          reason = `Relevant to "${matches[0]}".`;
+        } else if (maxPrice !== Infinity) {
+          reason = `Fits your budget.`;
+        }
+
+        return { product: p, score, reason };
+      });
+
+    const valid = scored.filter(s => (keywords.length === 0 && maxPrice !== Infinity) || s.score > 0);
+    valid.sort((a, b) => b.score - a.score || a.product.price - b.product.price);
+
+    setAiRecommendations(valid.slice(0, 3).map(v => ({ product: v.product, reason: v.reason })));
+    setHasAiSearched(true);
+  };
+
   return (
     <main className="flex-grow">
       {/* Hero Section */}
@@ -111,6 +163,64 @@ function Home({ customer }: { customer?: any }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </span>
+        </div>
+      </div>
+
+      {/* Smart Shopping Assistant */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 mb-4">
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-6 md:p-8 shadow-sm">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="bg-indigo-600 p-2 rounded-lg shadow-sm text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900">Smart Shopping Assistant</h3>
+          </div>
+          <p className="text-gray-600 mb-6">Describe what you're looking for, and our local AI will recommend the best matches.</p>
+          <form onSubmit={handleAiSearch} className="relative max-w-3xl">
+            <input 
+              type="text" 
+              placeholder="e.g., 'I need a laptop for programming under 2000' or 'affordable accessories'" 
+              value={aiQuery}
+              onChange={(e) => setAiQuery(e.target.value)}
+              className="w-full pl-6 pr-32 py-4 rounded-xl border border-indigo-200 text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-400 shadow-sm text-base md:text-lg"
+            />
+            <button type="submit" className="absolute right-2 top-2 bottom-2 bg-indigo-600 text-white px-6 rounded-lg font-medium hover:bg-indigo-700 transition-colors shadow-sm">
+              Ask AI
+            </button>
+          </form>
+
+          {hasAiSearched && (
+            <div className="mt-8">
+              <h4 className="font-bold text-lg text-gray-900 mb-4">Recommendations:</h4>
+              {aiRecommendations.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {aiRecommendations.map((rec, idx) => (
+                    <Link to={`/product/${rec.product.id}`} key={idx} className="bg-white rounded-xl shadow-sm border border-indigo-100 p-4 hover:shadow-md transition-shadow flex flex-col group">
+                      <div className="flex items-start space-x-4">
+                        <img src={rec.product.image} alt={rec.product.name} className="w-16 h-16 object-cover rounded-md" />
+                        <div>
+                          <h5 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-1">{rec.product.name}</h5>
+                          <span className="font-bold text-indigo-600">${rec.product.price.toFixed(2)}</span>
+                        </div>
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-indigo-50 text-sm text-gray-600 flex items-start space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        <p>{rec.reason}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl shadow-sm border border-orange-100 p-6 text-center">
+                  <p className="text-gray-600">No matching products found. Try adjusting your description or budget!</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
