@@ -335,6 +335,7 @@ import { WishlistPage, WishlistHeart } from './customerAuth/WishlistPage';
 function App() {
   const [customer, setCustomer] = useState<any>(null);
   const [cartItems, setCartItems] = useState<any[]>([]);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const fetchCart = () => {
     const token = localStorage.getItem('customer_token');
@@ -435,8 +436,45 @@ function App() {
                       </span>
                     )}
                   </Link>
+                  <button 
+                    className="md:hidden text-gray-500 hover:text-indigo-600 focus:outline-none"
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  >
+                    {isMobileMenuOpen ? (
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    ) : (
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    )}
+                  </button>
                 </div>
               </div>
+              
+              {/* Mobile Navigation Menu */}
+              {isMobileMenuOpen && (
+                <div className="md:hidden bg-white border-t border-gray-100 px-4 pt-2 pb-4 space-y-1 shadow-inner">
+                  <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50">Home</Link>
+                  <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50">Products</Link>
+                  
+                  {customer ? (
+                    <>
+                      <Link to="/wishlist" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50">Wishlist</Link>
+                      <Link to="/my-orders" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50">Orders</Link>
+                      <Link to="/profile" onClick={() => setIsMobileMenuOpen(false)} className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50">Profile</Link>
+                      <button 
+                        onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }} 
+                        className="block w-full text-left px-3 py-2 rounded-md text-base font-medium text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        Logout
+                      </button>
+                    </>
+                  ) : (
+                    <div className="pt-2">
+                      <Link to="/login" onClick={() => setIsMobileMenuOpen(false)} className="block w-full text-center px-4 py-2 mb-2 rounded-lg text-base font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100">Login</Link>
+                      <Link to="/register" onClick={() => setIsMobileMenuOpen(false)} className="block w-full text-center px-4 py-2 rounded-lg text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700">Register</Link>
+                    </div>
+                  )}
+                </div>
+              )}
             </header>
 
             <Routes>
