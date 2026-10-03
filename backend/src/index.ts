@@ -43,8 +43,12 @@ app.use(cors({
 app.use(express.json());
 app.use('/uploads', express.static(uploadDir));
 
-// Initialize DB
-initDb().then(() => console.log('Database initialized'));
+const dbInitPromise = initDb().then(() => console.log('Database initialized')).catch(console.error);
+
+app.use(async (req, res, next) => {
+  await dbInitPromise;
+  next();
+});
 
 // --- Customer Routes ---
 
