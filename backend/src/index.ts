@@ -490,26 +490,39 @@ app.put('/api/orders/:id/status', requireAuth, async (req: Request, res: Respons
 
 app.get('/api/admin/categories', requireAuth, async (req: Request, res: Response) => {
   const db = getDb();
-  const categories = await db.all('SELECT * FROM categories ORDER BY id ASC');
+  const categories = await db.all(`
+    SELECT c.*, p.name as parentName 
+    FROM categories c 
+    LEFT JOIN categories p ON c.parentId = p.id 
+    ORDER BY c.id ASC
+  `);
   res.json(categories);
 });
 
 app.get('/api/categories', async (req: Request, res: Response) => {
   const db = getDb();
-  const categories = await db.all('SELECT name FROM categories ORDER BY id ASC');
-  res.json(categories.map((c: any) => c.name));
+  const categories = await db.all('SELECT id, name, parentId FROM categories ORDER BY id ASC');
+  res.json(categories);
 });
 
 app.post('/api/admin/categories', requireAuth, async (req: Request, res: Response): Promise<void> => {
-  const { name } = req.body;
+  const { name, parentId } = req.body;
   if (!name || typeof name !== 'string' || name.trim() === '') {
     res.status(400).json({ message: 'Valid category name is required' });
     return;
   }
   const db = getDb();
   try {
-    const result = await db.run('INSERT INTO categories (name) VALUES (?)', [name.trim()]);
-    res.status(201).json({ id: result.lastID, name: name.trim() });
+    const finalParentId = parentId ? parseInt(parentId) : null;
+    if (finalParentId) {
+      const parentExists = await db.get('SELECT id FROM categories WHERE id = ?', [finalParentId]);
+      if (!parentExists) {
+        res.status(400).json({ message: 'Parent category does not exist' });
+        return;
+      }
+    }
+    const result = await db.run('INSERT INTO categories (name, parentId) VALUES (?, ?)', [name.trim(), finalParentId]);
+    res.status(201).json({ id: result.lastID, name: name.trim(), parentId: finalParentId });
   } catch (err: any) {
     if (err.message && err.message.includes('UNIQUE constraint failed')) {
       res.status(400).json({ message: 'Category already exists' });
@@ -520,7 +533,7 @@ app.post('/api/admin/categories', requireAuth, async (req: Request, res: Respons
 });
 
 app.put('/api/admin/categories/:id', requireAuth, async (req: Request, res: Response): Promise<void> => {
-  const { name } = req.body;
+  const { name, parentId } = req.body;
   const db = getDb();
   
   const category = await db.get('SELECT name FROM categories WHERE id = ?', [req.params.id]);
@@ -530,7 +543,20 @@ app.put('/api/admin/categories/:id', requireAuth, async (req: Request, res: Resp
   }
   
   try {
-    await db.run('UPDATE categories SET name = ? WHERE id = ?', [name, req.params.id]);
+    const finalParentId = parentId ? parseInt(parentId) : null;
+    if (finalParentId && finalParentId.toString() === req.params.id) {
+      res.status(400).json({ message: 'Category cannot be its own parent' });
+      return;
+    }
+    if (finalParentId) {
+      const parentExists = await db.get('SELECT id FROM categories WHERE id = ?', [finalParentId]);
+      if (!parentExists) {
+        res.status(400).json({ message: 'Parent category does not exist' });
+        return;
+      }
+    }
+
+    await db.run('UPDATE categories SET name = ?, parentId = ? WHERE id = ?', [name, finalParentId, req.params.id]);
     await db.run('UPDATE products SET category = ? WHERE category = ?', [name, category.name]);
     res.json({ message: 'Category updated' });
   } catch (err: any) {
@@ -544,12 +570,18 @@ app.put('/api/admin/categories/:id', requireAuth, async (req: Request, res: Resp
 
 app.delete('/api/admin/categories/:id', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const db = getDb();
-  const category = await db.get('SELECT name FROM categories WHERE id = ?', [req.params.id]);
+  const category = await db.get('SELECT id, name FROM categories WHERE id = ?', [req.params.id]);
   if (!category) {
     res.status(404).json({ message: 'Category not found' });
     return;
   }
   
+  const childUsage = await db.get('SELECT COUNT(*) as count FROM categories WHERE parentId = ?', [req.params.id]);
+  if (childUsage.count > 0) {
+    res.status(400).json({ message: `Cannot delete category used as parent by ${childUsage.count} subcategory(s)` });
+    return;
+  }
+
   const usage = await db.get('SELECT COUNT(*) as count FROM products WHERE category = ?', [category.name]);
   if (usage.count > 0) {
     res.status(400).json({ message: `Cannot delete category used by ${usage.count} product(s)` });

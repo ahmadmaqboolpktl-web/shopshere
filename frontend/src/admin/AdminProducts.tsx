@@ -81,7 +81,7 @@ export function AdminProducts() {
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-3xl font-bold text-gray-800">Products</h2>
         <button 
-          onClick={() => { setEditingProduct({ name: '', description: '', price: 0, category: categories[0] || '', image: '', stock: 0 }); setSelectedFile(null); setIsAdding(true); }}
+          onClick={() => { setEditingProduct({ name: '', description: '', price: 0, category: categories[0]?.name || '', image: '', stock: 0 }); setSelectedFile(null); setIsAdding(true); }}
           className="bg-indigo-600 text-white px-4 py-2 rounded-lg flex items-center hover:bg-indigo-700"
         >
           <Plus size={20} className="mr-2" /> Add Product
@@ -90,7 +90,7 @@ export function AdminProducts() {
 
       {(isAdding || editingProduct?.id) && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-8 max-w-2xl w-full">
+          <div className="bg-white rounded-xl p-8 max-w-2xl w-full max-h-screen overflow-y-auto">
             <h3 className="text-2xl font-bold mb-4">{isAdding ? 'Add Product' : 'Edit Product'}</h3>
             <form onSubmit={handleSave} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -102,7 +102,9 @@ export function AdminProducts() {
                   <label className="block text-sm font-medium mb-1">Category</label>
                   <select className="w-full border p-2 rounded" value={editingProduct.category} onChange={e => setEditingProduct({...editingProduct, category: e.target.value})}>
                     {categories.length > 0 ? categories.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
+                      <option key={cat.id} value={cat.name}>
+                        {cat.parentId ? `└ ${cat.name}` : cat.name}
+                      </option>
                     )) : (
                       <option value="">No categories available</option>
                     )}

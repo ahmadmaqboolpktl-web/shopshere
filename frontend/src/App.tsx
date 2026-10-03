@@ -12,9 +12,15 @@ interface Product {
   createdAt: string;
 }
 
+interface Category {
+  id: number | string;
+  name: string;
+  parentId: number | null;
+}
+
 function Home({ customer }: { customer?: any }) {
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>(['All']);
+  const [categories, setCategories] = useState<Category[]>([{ id: 'all', name: 'All', parentId: null }]);
   const [loading, setLoading] = useState(true);
   
   const [search, setSearch] = useState('');
@@ -24,7 +30,7 @@ function Home({ customer }: { customer?: any }) {
   useEffect(() => {
     fetch('http://localhost:5000/api/categories')
       .then(res => res.json())
-      .then(data => setCategories(['All', ...data]))
+      .then(data => setCategories([{ id: 'all', name: 'All', parentId: null }, ...data]))
       .catch(console.error);
 
     fetch('http://localhost:5000/api/products')
@@ -44,7 +50,13 @@ function Home({ customer }: { customer?: any }) {
 
     // Filter by Category
     if (selectedCategory !== 'All') {
-      result = result.filter(p => p.category === selectedCategory);
+      const selectedCatObj = categories.find(c => c.name === selectedCategory);
+      if (selectedCatObj) {
+        const subCatNames = categories.filter(c => c.parentId === selectedCatObj.id).map(c => c.name);
+        result = result.filter(p => p.category === selectedCategory || subCatNames.includes(p.category));
+      } else {
+        result = result.filter(p => p.category === selectedCategory);
+      }
     }
 
     // Filter by Search
@@ -62,7 +74,21 @@ function Home({ customer }: { customer?: any }) {
     });
 
     return result;
-  }, [products, selectedCategory, search, sortBy]);
+  }, [products, selectedCategory, search, sortBy, categories]);
+
+  const topLevelCategories = categories.filter(c => c.parentId === null);
+  const selectedCatObj = categories.find(c => c.name === selectedCategory);
+  let subcategoriesToShow: Category[] = [];
+  
+  if (selectedCatObj && selectedCatObj.id !== 'all') {
+    if (selectedCatObj.parentId === null) {
+      // It is a parent, show its children
+      subcategoriesToShow = categories.filter(c => c.parentId === selectedCatObj.id);
+    } else {
+      // It is a child, show its siblings
+      subcategoriesToShow = categories.filter(c => c.parentId === selectedCatObj.parentId);
+    }
+  }
 
   return (
     <main className="flex-grow">
@@ -90,17 +116,33 @@ function Home({ customer }: { customer?: any }) {
 
       {/* Categories Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex overflow-x-auto space-x-4 pb-4 scrollbar-hide">
-          {categories.map((category, index) => (
-            <button 
-              key={index} 
-              onClick={() => setSelectedCategory(category)}
-              className={`flex-shrink-0 px-6 py-2 rounded-full font-medium transition-colors ${selectedCategory === category ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
-            >
-              {category}
-            </button>
-          ))}
+        <div className="flex overflow-x-auto space-x-4 pb-2 scrollbar-hide">
+          {topLevelCategories.map((category, index) => {
+            const isActive = selectedCategory === category.name || (selectedCatObj && selectedCatObj.parentId === category.id);
+            return (
+              <button 
+                key={index} 
+                onClick={() => setSelectedCategory(category.name)}
+                className={`flex-shrink-0 px-6 py-2 rounded-full font-medium transition-colors ${isActive ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'}`}
+              >
+                {category.name}
+              </button>
+            );
+          })}
         </div>
+        {subcategoriesToShow.length > 0 && (
+          <div className="flex overflow-x-auto space-x-3 pt-4 border-t border-gray-100 scrollbar-hide">
+            {subcategoriesToShow.map((sub) => (
+              <button
+                key={sub.id}
+                onClick={() => setSelectedCategory(sub.name)}
+                className={`flex-shrink-0 px-4 py-1.5 text-sm rounded-full transition-colors ${selectedCategory === sub.name ? 'bg-indigo-100 text-indigo-800 font-semibold border border-indigo-200' : 'bg-gray-50 text-gray-600 border border-gray-200 hover:bg-gray-100'}`}
+              >
+                {sub.name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Products Section */}

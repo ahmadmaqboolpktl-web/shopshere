@@ -8,6 +8,7 @@ export function AdminCategories() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<number | null>(null);
   const [name, setName] = useState('');
+  const [parentId, setParentId] = useState<string>('');
 
   const fetchCategories = () => {
     fetch('http://localhost:5000/api/admin/categories', {
@@ -40,13 +41,14 @@ export function AdminCategories() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ name })
+        body: JSON.stringify({ name, parentId: parentId === '' ? null : parentId })
       });
       
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Error saving category');
       
       setName('');
+      setParentId('');
       setIsEditing(false);
       setCurrentId(null);
       fetchCategories();
@@ -79,6 +81,7 @@ export function AdminCategories() {
     setIsEditing(true);
     setCurrentId(category.id);
     setName(category.name);
+    setParentId(category.parentId ? category.parentId.toString() : '');
     setError('');
   };
 
@@ -103,6 +106,19 @@ export function AdminCategories() {
                   required
                 />
               </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 font-medium mb-2">Parent Category (Optional)</label>
+                <select 
+                  value={parentId}
+                  onChange={(e) => setParentId(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                >
+                  <option value="">None (Top-level)</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
               <div className="flex space-x-2">
                 <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 font-medium w-full">
                   {isEditing ? 'Update' : 'Add'}
@@ -110,8 +126,8 @@ export function AdminCategories() {
                 {isEditing && (
                   <button 
                     type="button" 
-                    onClick={() => { setIsEditing(false); setName(''); setCurrentId(null); setError(''); }}
-                    className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 font-medium"
+                    onClick={() => { setIsEditing(false); setName(''); setParentId(''); setCurrentId(null); setError(''); }}
+                    className="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 font-medium w-full"
                   >
                     Cancel
                   </button>
@@ -131,6 +147,7 @@ export function AdminCategories() {
                   <tr>
                     <th className="p-4 font-medium">ID</th>
                     <th className="p-4 font-medium">Name</th>
+                    <th className="p-4 font-medium">Parent</th>
                     <th className="p-4 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
@@ -139,6 +156,13 @@ export function AdminCategories() {
                     <tr key={cat.id} className="hover:bg-gray-50">
                       <td className="p-4 font-medium text-gray-500">#{cat.id}</td>
                       <td className="p-4 font-medium text-gray-900">{cat.name}</td>
+                      <td className="p-4 text-gray-500">
+                        {cat.parentName ? (
+                          <span className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-sm">{cat.parentName}</span>
+                        ) : (
+                          <span className="text-gray-400 italic text-sm">Top-level</span>
+                        )}
+                      </td>
                       <td className="p-4 text-right">
                         <button 
                           onClick={() => handleEdit(cat)}

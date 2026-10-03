@@ -86,6 +86,11 @@ export async function initDb() {
     );
   `);
 
+  const cols = await db.all('PRAGMA table_info(categories)');
+  if (!cols.find(c => c.name === 'parentId')) {
+    await db.run('ALTER TABLE categories ADD COLUMN parentId INTEGER REFERENCES categories(id)');
+  }
+
   // Seed admin user
   const adminExists = await db.get('SELECT * FROM users WHERE username = ?', ['admin']);
   if (!adminExists) {
