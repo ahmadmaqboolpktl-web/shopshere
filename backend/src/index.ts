@@ -5,7 +5,18 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { initDb, getDb } from './db';
 import multer from 'multer';
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ 
+  dest: 'uploads/',
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPG, PNG, and WEBP are allowed.'));
+    }
+  }
+});
 
 dotenv.config();
 
@@ -80,7 +91,11 @@ const requireAuth = (req: Request, res: Response, next: NextFunction): void => {
 
   const token = authHeader.split(' ')[1];
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET) as any;
+    if (!payload.username) {
+      res.status(403).json({ message: 'Forbidden: Admin access required' });
+      return;
+    }
     (req as any).user = payload;
     next();
   } catch (err) {
@@ -97,7 +112,11 @@ const requireCustomerAuth = (req: Request, res: Response, next: NextFunction): v
   }
   const token = authHeader.split(' ')[1];
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET) as any;
+    if (!payload.email) {
+      res.status(403).json({ message: 'Forbidden: Customer access required' });
+      return;
+    }
     (req as any).customer = payload;
     next();
   } catch (err) {
@@ -109,6 +128,10 @@ const requireCustomerAuth = (req: Request, res: Response, next: NextFunction): v
 
 app.post('/api/auth/register', async (req: Request, res: Response): Promise<void> => {
   const { name, email, password } = req.body;
+  if (!name || !email || !password || typeof email !== 'string' || !email.includes('@')) {
+    res.status(400).json({ message: 'Valid name, email, and password are required' });
+    return;
+  }
   const db = getDb();
   
   const existing = await db.get('SELECT * FROM customers WHERE email = ?', [email]);
@@ -383,8 +406,12 @@ app.get('/api/admin/stats', requireAuth, async (req: Request, res: Response) => 
   });
 });
 
-app.post('/api/products', requireAuth, async (req: Request, res: Response) => {
+app.post('/api/products', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const { id, name, description, price, category, image, stock } = req.body;
+  if (!name || typeof price !== 'number' || price < 0 || typeof stock !== 'number' || stock < 0) {
+    res.status(400).json({ message: 'Invalid product details. Price and stock must be zero or greater.' });
+    return;
+  }
   const db = getDb();
   const createdAt = new Date().toISOString();
   
@@ -395,8 +422,12 @@ app.post('/api/products', requireAuth, async (req: Request, res: Response) => {
   res.status(201).json({ message: 'Product created' });
 });
 
-app.put('/api/products/:id', requireAuth, async (req: Request, res: Response) => {
+app.put('/api/products/:id', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const { name, description, price, category, image, stock } = req.body;
+  if (!name || typeof price !== 'number' || price < 0 || typeof stock !== 'number' || stock < 0) {
+    res.status(400).json({ message: 'Invalid product details. Price and stock must be zero or greater.' });
+    return;
+  }
   const db = getDb();
   
   await db.run(
@@ -436,8 +467,15 @@ app.get('/api/orders/:id', requireAuth, async (req: Request, res: Response): Pro
   res.json({ order, items });
 });
 
-app.put('/api/orders/:id/status', requireAuth, async (req: Request, res: Response) => {
+app.put('/api/orders/:id/status', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const { status } = req.body;
+  const allowedStatuses = ['Pending', 'Confirmed', 'Processing', 'Shipped', 'Delivered'];
+  
+  if (!allowedStatuses.includes(status)) {
+    res.status(400).json({ message: 'Invalid order status' });
+    return;
+  }
+  
   const db = getDb();
   await db.run('UPDATE orders SET status = ? WHERE id = ?', [status, req.params.id]);
   res.json({ message: 'Order status updated' });
@@ -457,10 +495,14 @@ app.get('/api/categories', async (req: Request, res: Response) => {
 
 app.post('/api/admin/categories', requireAuth, async (req: Request, res: Response): Promise<void> => {
   const { name } = req.body;
+  if (!name || typeof name !== 'string' || name.trim() === '') {
+    res.status(400).json({ message: 'Valid category name is required' });
+    return;
+  }
   const db = getDb();
   try {
-    const result = await db.run('INSERT INTO categories (name) VALUES (?)', [name]);
-    res.status(201).json({ id: result.lastID, name });
+    const result = await db.run('INSERT INTO categories (name) VALUES (?)', [name.trim()]);
+    res.status(201).json({ id: result.lastID, name: name.trim() });
   } catch (err: any) {
     if (err.message && err.message.includes('UNIQUE constraint failed')) {
       res.status(400).json({ message: 'Category already exists' });
