@@ -22,9 +22,16 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'development_fallback_secret_only';
+const JWT_SECRET = process.env.JWT_SECRET;
 
-app.use(cors());
+if (!JWT_SECRET) {
+  console.error('FATAL ERROR: JWT_SECRET is not defined in environment variables.');
+  process.exit(1);
+}
+
+app.use(cors({
+  origin: 'http://localhost:5173'
+}));
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
